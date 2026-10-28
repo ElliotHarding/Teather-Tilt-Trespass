@@ -1,0 +1,20 @@
+{
+  "name": "teather-tilt-trespass",
+  "version": "1.0.0",
+  "description": "Combined Ball Game — Teather + Arrow-launch maze + Tilting platform, merged into one 2D physics game.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}
