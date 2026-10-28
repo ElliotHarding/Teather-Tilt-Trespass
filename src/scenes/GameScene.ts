@@ -7,6 +7,7 @@ import {
   FIELD_Y,
   FIELD_H,
   GRAVITY_Y,
+  TILT_ENABLED,
   TILT_MAX,
   TILT_RAMP,
   HOLD_THRESHOLD_MS,
@@ -137,7 +138,7 @@ export class GameScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     const dt = delta / 1000;
-    this.updateTilt(dt);
+    if (TILT_ENABLED) this.updateTilt(dt);
 
     if (this.pressStart !== null && this.now() - this.pressStart >= HOLD_THRESHOLD_MS) {
       this.pair.setAiming(true);
@@ -481,6 +482,13 @@ export class GameScene extends Phaser.Scene {
   // --- tilt (gravity.x steering) ------------------------------------------
 
   private setupTilt(): void {
+    if (!TILT_ENABLED) {
+      // Mechanic off: pin gravity un-steered so launches fly straight, and skip
+      // all accelerometer wiring (no iOS permission prompt to interrupt a tap).
+      this.matter.world.setGravity(0, GRAVITY_Y);
+      return;
+    }
+
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.input.keyboard?.addCapture('LEFT,RIGHT');
 
@@ -498,7 +506,7 @@ export class GameScene extends Phaser.Scene {
 
   /** iOS 13+ needs an explicit permission prompt, triggered by a user tap. */
   private ensureTiltPermission(): void {
-    if (this.tiltAsked) return;
+    if (!TILT_ENABLED || this.tiltAsked) return;
     this.tiltAsked = true;
     const doe = (
       window as unknown as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } }
@@ -565,12 +573,15 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(1, 0.5)
       .setDepth(901);
 
-    // Gravity/tilt plumb-line, centred in the header.
-    this.tiltIndicator = this.add.graphics().setDepth(902);
+    // Gravity/tilt plumb-line, centred in the header (only when tilt is on).
+    if (TILT_ENABLED) this.tiltIndicator = this.add.graphics().setDepth(902);
 
     // Footer: controls hint above the buttons.
+    const hint = TILT_ENABLED
+      ? 'tap: spin / swap   ·   hold: launch   ·   ←/→ or tilt: steer'
+      : 'tap: spin / swap   ·   hold: launch';
     this.add
-      .text(GAME_WIDTH / 2, footerTop + 24, 'tap: spin / swap   ·   hold: launch   ·   ←/→ or tilt: steer', {
+      .text(GAME_WIDTH / 2, footerTop + 24, hint, {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#8a8a9a',

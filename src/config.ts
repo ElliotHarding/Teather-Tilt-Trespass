@@ -24,6 +24,11 @@ export const FIELD_H = GAME_HEIGHT - HEADER_H - FOOTER_H;
 // fall). The orbiting/resting pair is kinematic, so the swing stays
 // predictable. Key difficulty knob: raise to arc harder, lower for floatier.
 export const GRAVITY_Y = 0;
+// Master switch for the tilt / gravity-steer mechanic (accelerometer + ←/→).
+// Disabled: gravity stays un-steered so launches fly straight, and the mobile
+// accelerometer-permission prompt (which interrupted the hold-to-launch
+// gesture) is skipped. Flip to true to bring the Tilt mechanic back.
+export const TILT_ENABLED = false;
 // Tilt steers gravity.x between -TILT_MAX..+TILT_MAX, curving launches sideways.
 export const TILT_MAX = 0.6;
 // How fast the tilt eases toward its target, per second (keyboard ramp feel).
