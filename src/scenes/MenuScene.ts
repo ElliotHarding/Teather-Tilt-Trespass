@@ -14,7 +14,7 @@ export class MenuScene extends Phaser.Scene {
 
   create(): void {
     this.add
-      .text(GAME_WIDTH / 2, 70, 'Teather · Tilt · Trespass', {
+      .text(GAME_WIDTH / 2, 70, 'Tether · Tilt · Trespass', {
         fontFamily: 'monospace',
         fontSize: '22px',
         color: COLORS.text,
