@@ -72,7 +72,13 @@ export const COLORS = {
   enemy: 0xff7a3a,
   gem: 0xb98cff,
   star: 0xffd45a,
+  gate: 0xffb14a, // closed gate wall (amber)
+  pad: 0xff8a5a, // button pad, un-pressed
+  padOn: 0x5aff8f, // button pad, pressed (matches the goal green)
 } as const;
 
 // Collectible gem radius, in pixels.
 export const GEM_RADIUS = 13;
+
+// Button pad radius, in pixels. Touching one with either ball opens its gate.
+export const BUTTON_RADIUS = 18;

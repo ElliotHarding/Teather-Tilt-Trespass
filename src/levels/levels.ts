@@ -30,6 +30,18 @@ export interface EnemyDef {
   speed: number;
 }
 
+/**
+ * A button pad and the gate it controls. The gate starts as a solid wall
+ * (blocks movement and launches stick to it); the first time either ball
+ * touches the pad, the gate opens permanently and that path clears.
+ */
+export interface GateButtonDef {
+  /** Button pad centre (field-local). */
+  button: Point;
+  /** Gate wall (field-local) that opens when the button is pressed. */
+  gate: RectDef;
+}
+
 export interface LevelData {
   name: string;
   start: Point;
@@ -44,6 +56,8 @@ export interface LevelData {
   deadlyWalls?: RectDef[];
   /** Moving enemies that kill on contact. */
   enemies?: EnemyDef[];
+  /** Button pads that open their gate wall when touched. */
+  buttons?: GateButtonDef[];
 }
 
 // Field-local coords. Playfield is FIELD_W (540) × FIELD_H (732); usable area
@@ -152,5 +166,17 @@ export const LEVELS: LevelData[] = [
     enemies: [{ a: { x: 430, y: 520 }, b: { x: 430, y: 340 }, r: 16, speed: 110 }],
     par: 6,
     gems: [{ x: 120, y: 320 }],
+  },
+  {
+    name: '10 · Gatekeeper',
+    start: { x: 110, y: 640 },
+    goal: { x: 270, y: 90, r: 52 },
+    walls: [],
+    hazards: [],
+    // A gate seals off the goal (both edge gaps too narrow for a ball). Brush
+    // the wall-mounted pad in the lower chamber to open it, then launch up.
+    buttons: [{ button: { x: 468, y: 560 }, gate: { x: 270, y: 300, w: 400, h: 22 } }],
+    par: 4,
+    gems: [{ x: 270, y: 430 }],
   },
 ];

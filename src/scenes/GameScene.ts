@@ -13,6 +13,7 @@ import {
   WALL_THICKNESS,
   BALL_RADIUS,
   GEM_RADIUS,
+  BUTTON_RADIUS,
   COLORS,
 } from '../config';
 import { TetherPair } from '../entities/TetherPair';
@@ -25,6 +26,21 @@ interface Gem {
   y: number;
   obj: Phaser.GameObjects.Arc;
   collected: boolean;
+}
+
+/** A Phaser Rectangle given a Matter body (so .body is present at runtime). */
+type MatterRect = Phaser.GameObjects.Rectangle & { body: MatterJS.BodyType };
+
+/** A button pad + the gate wall it opens (see GateButtonDef). */
+interface Gate {
+  buttonX: number;
+  buttonY: number;
+  pad: Phaser.GameObjects.Arc;
+  wall: MatterRect;
+  /** The gate's entries in interiorWalls / wallRects, removed on open. */
+  gateAbs: RectDef;
+  wallRectRef: RectDef;
+  opened: boolean;
 }
 
 interface GameSceneData {
@@ -64,6 +80,7 @@ export class GameScene extends Phaser.Scene {
   private gems: Gem[] = [];
   private gemCount = 0;
   private enemyObjs: Phaser.GameObjects.Arc[] = [];
+  private gates: Gate[] = [];
 
   // Tilt (gravity.x steering).
   private tiltX = 0;
@@ -88,6 +105,7 @@ export class GameScene extends Phaser.Scene {
     this.gems = [];
     this.gemCount = 0;
     this.enemyObjs = [];
+    this.gates = [];
     this.tiltX = 0;
   }
 
@@ -102,6 +120,7 @@ export class GameScene extends Phaser.Scene {
     const startY = this.level.start.y + FIELD_Y;
 
     this.createWalls();
+    this.createGates();
     this.createHazards();
     this.createDeadlyWalls();
     this.createGoal();
@@ -128,7 +147,10 @@ export class GameScene extends Phaser.Scene {
     const gemStr = this.gems.length > 0 ? `   gems ${this.gemCount}/${this.gems.length}` : '';
     this.launchText.setText(`launches: ${this.pair.launches}${gemStr}`);
 
-    if (!this.resolved) this.checkField();
+    if (!this.resolved) {
+      this.checkButtons();
+      this.checkField();
+    }
   }
 
   private toAbs(r: RectDef): RectDef {
@@ -368,6 +390,92 @@ export class GameScene extends Phaser.Scene {
       });
       return { x, y, obj, collected: false };
     });
+  }
+
+  // --- buttons + gates ----------------------------------------------------
+
+  /**
+   * Build each button pad and its gate wall. The gate is a solid wall in both
+   * stop-at-walls modes (so it blocks the orbit and launches stick to it) and
+   * carries a Matter body. Touching the pad with either ball opens it for good.
+   *
+   * Must run after createWalls(): we append the gate to `interiorWalls`, which
+   * createWalls() iterates to build the border/interior wall bodies — appending
+   * here avoids drawing the gate twice. The pair reads the wall arrays live, so
+   * mutating them (on open) is seen immediately.
+   */
+  private createGates(): void {
+    for (const def of this.level.buttons ?? []) {
+      const g = this.toAbs(def.gate);
+      const wall = this.add.rectangle(g.x, g.y, g.w, g.h, COLORS.gate) as MatterRect;
+      wall.setDepth(2); // same as walls, above goal/gems
+      this.matter.add.gameObject(wall, { isStatic: true, label: 'wall' });
+
+      // Track distinct entries in each array so we can splice them on open.
+      const wallRectRef: RectDef = { x: g.x, y: g.y, w: g.w, h: g.h };
+      this.wallRects.push(wallRectRef);
+      this.interiorWalls.push(g);
+
+      const bx = def.button.x;
+      const by = def.button.y + FIELD_Y;
+      const pad = this.add.circle(bx, by, BUTTON_RADIUS, COLORS.pad, 0.9);
+      pad.setStrokeStyle(2, 0xffffff, 0.4);
+      pad.setDepth(1);
+      this.tweens.add({
+        targets: pad,
+        scale: 1.12,
+        duration: 700,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut',
+      });
+
+      this.gates.push({ buttonX: bx, buttonY: by, pad, wall, gateAbs: g, wallRectRef, opened: false });
+    }
+  }
+
+  /** Open any gate whose pad is being touched by either ball. */
+  private checkButtons(): void {
+    for (const gate of this.gates) {
+      if (gate.opened) continue;
+      for (const p of this.pair.points) {
+        if (
+          Phaser.Math.Distance.Between(p.x, p.y, gate.buttonX, gate.buttonY) <
+          BUTTON_RADIUS + BALL_RADIUS
+        ) {
+          this.openGate(gate);
+          break;
+        }
+      }
+    }
+  }
+
+  private openGate(gate: Gate): void {
+    gate.opened = true;
+
+    // Drop the gate from the solid-wall arrays and remove its physics body so
+    // the orbit and launches pass straight through from this frame on.
+    this.removeRect(this.wallRects, gate.wallRectRef);
+    this.removeRect(this.interiorWalls, gate.gateAbs);
+    this.matter.world.remove(gate.wall.body);
+
+    // Pad latches to the pressed look; gate slides away and fades.
+    this.tweens.killTweensOf(gate.pad);
+    gate.pad.setScale(1).setFillStyle(COLORS.padOn, 0.9);
+    this.cameras.main.flash(120, 90, 255, 143);
+    this.tweens.add({
+      targets: gate.wall,
+      scaleY: 0,
+      alpha: 0,
+      duration: 260,
+      ease: 'Back.in',
+      onComplete: () => gate.wall.destroy(),
+    });
+  }
+
+  private removeRect(arr: RectDef[], rect: RectDef): void {
+    const i = arr.indexOf(rect);
+    if (i >= 0) arr.splice(i, 1);
   }
 
   // --- tilt (gravity.x steering) ------------------------------------------
