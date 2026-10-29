@@ -1,4 +1,4 @@
-# Teather-Tilt-Trespass
+# Tether-Tilt-Trespass
 
 Web app game made with vite.
 
